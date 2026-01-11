@@ -42,52 +42,74 @@
 </template>
 
 
-<script>
-export default {
-data() {
-return {
-newName: "",
-newEmail: "",
-contactLists: [],
-};
-},
-methods: {
-async getContact() {
-const resData = await this.$axios.get(
-"http://127.0.0.1:8000/api/contact/"
-);
-this.contactLists = resData.data.data;
-},
-async insertContact() {
-const sendData = {
-name: this.newName,
-email: this.newEmail,
-};
-await this.$axios.post("http://127.0.0.1:8000/api/contact/", sendData);
-this.getContact();
-},
-async updateContact(id, name, email) {
-const sendData = {
-name: name,
-email: email,
-};
-await this.$axios.put(
-"http://127.0.0.1:8000/api/contact/" + id,
-sendData
-);
-this.getContact();
-},
-async deleteContact(id) {
-await this.$axios.delete("http://127.0.0.1:8000/api/contact/" + id);
-this.getContact();
-},
-},
-created() {
-this.getContact();
-},
-};
-</script>
+<script setup>
+// runtimeConfigからURLを取得
+const config = useRuntimeConfig();
+const apiURL = config.public.apiBase;
 
+// データの状態を管理（refを使用）
+const newName = ref("");
+const newEmail = ref("");
+const contactLists = ref([]);
+
+// 1. データ取得
+const getContact = async () => {
+    try {
+    // $axios.get ではなく $fetch を使用
+    const res = await $fetch(apiURL);
+    contactLists.value = res.data; // Laravel側が {data: [...]} で返す想定
+    } catch (e) {
+    console.error("取得エラー", e);
+    }
+};
+
+// 2. 新規作成
+const insertContact = async () => {
+    try {
+    await $fetch(apiURL, {
+        method: 'POST',
+        body: { name: newName.value, email: newEmail.value }
+    });
+    newName.value = "";
+    newEmail.value = "";
+    getContact(); // 再取得
+    } catch (e) {
+    alert("作成に失敗しました");
+    }
+};
+
+// 3. 更新
+const updateContact = async (id, name, email) => {
+    try {
+    await $fetch(`${apiURL}${id}`, {
+        method: 'PUT',
+        body: { name, email }
+    });
+    alert("更新しました");
+    getContact();
+    } catch (e) {
+    alert("更新エラー");
+    }
+};
+
+// 4. 削除
+const deleteContact = async (id) => {
+    if(!confirm("削除しますか？")) return;
+    try {
+    await $fetch(`${apiURL}${id}`, {
+        method: 'DELETE'
+    });
+    getContact();
+    } catch (e) {
+    alert("削除エラー");
+    }
+};
+
+// 画面が表示された時に実行
+onMounted(() => {
+    getContact();
+});
+</script>
 
 <style>
 table,
